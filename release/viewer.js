@@ -706,7 +706,7 @@ function Viewer( viewerPlugin, parameters ) {
             }()),
             {
                 supportsMimetype:      function ( mimetype ) {
-                    return (mimetype === 'application/pdf' || mimetype === 'application/illustrator');
+                    return (mimetype.startsWith('application/pdf') || mimetype.startsWith('application/illustrator'));
                 },
                 supportsFileExtension: function ( extension ) {
                     return (extension === 'pdf' || extension === 'ai');
