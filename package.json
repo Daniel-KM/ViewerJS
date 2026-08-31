@@ -44,12 +44,10 @@
     "url": "git://github.com/vandernorth/ViewerJS.git"
   },
   "dependencies": {
-    "node-webodf": "https://github.com/vandernorth/WebODF.git",
     "pdfjs-dist": "^6.2.108",
     "video.js": "^8.23.9"
   },
   "devDependencies": {
-    "browserify": "^13",
     "express": "^4.1",
     "shelljs": "^0"
   },
