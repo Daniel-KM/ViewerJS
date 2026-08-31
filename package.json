@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "pdfjs-dist": "^6.2.108",
-    "video.js": "^8.23.9"
+    "video.js": "^8.24.0"
   },
   "devDependencies": {
     "express": "^4.1",

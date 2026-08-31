@@ -1,6 +1,6 @@
 /**
  * @license
- * Video.js 8.23.9 <http://videojs.com/>
+ * Video.js 8.24.0 <http://videojs.com/>
  * Copyright 2010-present Video.js contributors
  * Available under Apache License Version 2.0
  * <https://github.com/videojs/video.js/blob/main/LICENSE>
@@ -26,7 +26,7 @@ import { getId3Offset } from '@videojs/vhs-utils/es/id3-helpers';
 import { detectContainerForBytes, isLikelyFmp4MediaSegment } from '@videojs/vhs-utils/es/containers';
 import { ONE_SECOND_IN_TS } from 'mux.js/lib/utils/clock';
 
-var version$6 = "8.23.9";
+var version$6 = "8.24.0";
 
 /**
  * An Object that contains lifecycle hooks as keys which point to an array
@@ -10987,6 +10987,10 @@ class PosterImage extends ClickableComponent {
    */
   constructor(player, options) {
     super(player, options);
+    const {
+      mainContent
+    } = options && options.playerOptions || {};
+    this.isMainContent = mainContent;
     this.update();
     this.update_ = e => this.update(e);
     player.on('posterchange', this.update_);
@@ -11089,7 +11093,8 @@ class PosterImage extends ClickableComponent {
         // Don't want poster to be tabbable.
         tabIndex: -1
       }, {}, createEl('img', {
-        loading: 'lazy',
+        loading: this.isMainContent ? 'eager' : 'lazy',
+        fetchPriority: this.isMainContent ? 'high' : 'auto',
         crossOrigin: this.crossOrigin()
       }, {
         alt: ''
@@ -11114,7 +11119,17 @@ class PosterImage extends ClickableComponent {
     if (!this.player_.controls()) {
       return;
     }
-    if (this.player_.tech(true)) {
+
+    // On Microsoft Edge, moving focus to the <video> (tech) element as playback
+    // starts prevents a protected (DRM/EME) video surface from being presented:
+    // audio plays but the frame stays black until a later repaint or focus change.
+    // Focus the control-bar play toggle instead of the tech on Edge. See
+    // https://github.com/videojs/video.js/issues/6270.
+    const cb = this.player_.getChild('controlBar');
+    const playToggle = cb && cb.getChild('playToggle');
+    if (IS_EDGE) {
+      (playToggle || this.player_).focus();
+    } else if (this.player_.tech(true)) {
       this.player_.tech(true).focus();
     }
     if (this.player_.paused()) {
@@ -11811,17 +11826,28 @@ class BigPlayButton extends Button {
    */
   handleClick(event) {
     const playPromise = this.player_.play();
+    const cb = this.player_.getChild('controlBar');
+    const playToggle = cb && cb.getChild('playToggle');
 
     // exit early if tapped or clicked via the mouse
     if (event.type === 'tap' || this.mouseused_ && 'clientX' in event && 'clientY' in event) {
       silencePromise(playPromise);
-      if (this.player_.tech(true)) {
+
+      // On Microsoft Edge, moving focus to the <video> (tech) element as playback
+      // starts prevents a protected (DRM/EME) video surface from being presented:
+      // audio plays but the frame stays black until a later repaint or focus change.
+      // Focus the control-bar play toggle instead of the tech on Edge, mirroring the
+      // keyboard branch below. This is the pointer-path counterpart to the fix for
+      // https://github.com/videojs/video.js/issues/6270 (#6318/#6508 redirected only
+      // the keyboard path; the mouse/tap tech.focus() survived and regressed on
+      // Chromium Edge with hardware-accelerated DRM).
+      if (IS_EDGE) {
+        (playToggle || this.player_).focus();
+      } else if (this.player_.tech(true)) {
         this.player_.tech(true).focus();
       }
       return;
     }
-    const cb = this.player_.getChild('controlBar');
-    const playToggle = cb && cb.getChild('playToggle');
     if (!playToggle) {
       this.player_.tech(true).focus();
       return;
@@ -25608,13 +25634,13 @@ class Player extends Component$1 {
   }
 
   /**
-   * Set or get the current MediaError
+   * Set, clear, or get the current MediaError
    *
    * @fires Player#error
    *
-   * @param  {MediaError|string|number} [err]
+   * @param  {MediaError|string|number|null} [err]
    *         A MediaError or a string/number to be turned
-   *         into a MediaError
+   *         into a MediaError. Pass `null` to clear the current error state.
    *
    * @return {MediaError|null|undefined}
    *         - The current MediaError when getting (or null)

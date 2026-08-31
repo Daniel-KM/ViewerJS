@@ -28,6 +28,11 @@ shell.cp('-R', path.resolve(sourceVideo, './dist/'), releaseDir + '/video-js');
 shell.rm('-rf', releaseDir + '/video-js/examples');
 shell.rm('-rf', releaseDir + '/video-js/types');
 shell.rm('-rf', releaseDir + '/video-js/*.zip');
+// video.js publishes some of its files with the bit of execution set and the
+// copy keeps the modes, so the files of the release would not be plain ones.
+shell.find(releaseDir + '/video-js')
+    .filter(name => shell.test('-f', name))
+    .forEach(name => shell.chmod(644, name));
 shell.cp(path.resolve(sourceDir, 'ODFViewerPlugin.js'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'PDFViewerPlugin.js'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'HTMLViewerPlugin.js'), releaseDir);
