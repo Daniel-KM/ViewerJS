@@ -1,0 +1,64 @@
+# Builds the viewer and publishes it with the release of github. Gitlab builds
+# and publishes its own, see ".gitlab-ci.yml": neither forge pushes a file to
+# the other.
+#
+# The product is one archive of the directory "release", which is the viewer
+# itself: it is copied in a web server as it is, or taken by a module that
+# holds it, see "README.md".
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Release of github
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Dependencies of the build
+        run: npm ci
+
+      - name: Viewer
+        run: npm run build
+
+      # The name carries the version of the package, which the tag names too.
+      - name: Archive
+        run: |
+          version=$(node -p "require('./package.json').version")
+          mkdir -p products
+          (cd release && zip -rq ../products/viewerjs-$version.zip .)
+          ls -l products
+
+      # "archive: false" hands the archive over as it is: an artifact is
+      # wrapped in a zip otherwise, and whoever downloads it unpacks twice.
+      - uses: actions/upload-artifact@v7
+        with:
+          path: products/viewerjs-*.zip
+          archive: false
+          if-no-files-found: error
+
+      # A release that stands already is written to rather than opened again,
+      # so that the workflow can be run a second time on the same tag.
+      - name: Release of github
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+              gh release upload "$TAG" products/* --clobber
+          else
+              gh release create "$TAG" --title "$TAG" \
+                  --notes "The viewer of $TAG." products/*
+          fi
