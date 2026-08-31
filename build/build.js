@@ -14,10 +14,10 @@ const shell      = require('shelljs'),
 
 shell.cp(path.resolve(sourceDir, 'index.html'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'example.local.css'), releaseDir);
-shell.cp(path.resolve(sourcePdf, './build/pdf.min.js'), releaseDir);
-shell.cp(path.resolve(sourcePdf, './build/pdf.worker.min.js'), releaseDir);
-shell.sed('-i', /pdf\.worker/g, 'pdf.worker.min', releaseDir + '/pdf.min.js');
-shell.cp(path.resolve(sourcePdf, './web/compatibility.js'), releaseDir);
+// Since version 4, pdf.js is distributed as an es module only and the file
+// "compatibility.js" does not exist any more.
+shell.cp(path.resolve(sourcePdf, './build/pdf.min.mjs'), releaseDir);
+shell.cp(path.resolve(sourcePdf, './build/pdf.worker.min.mjs'), releaseDir);
 shell.rm('-rf', releaseDir + '/video-js');
 shell.cp('-R', path.resolve(sourceVideo, './dist/'), releaseDir + '/video-js');
 shell.rm('-rf', releaseDir + '/video-js/examples');

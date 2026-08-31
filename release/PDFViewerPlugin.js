@@ -4,15 +4,15 @@
  * @licstart
  * This file is part of ViewerJS.
  *
- * ViewerJS is free software: you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License (GNU AGPL)
- * as published by the Free Software Foundation, either version 3 of
- * the License, or (at your option) any later version.
+ * ViewerJS is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU Affero General Public License (GNU AGPL) as published by the
+ * Free Software Foundation, either version 3 of the License, or (at your
+ * option) any later version.
  *
- * ViewerJS is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
+ * ViewerJS is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with ViewerJS.  If not, see <http://www.gnu.org/licenses/>.
@@ -22,38 +22,25 @@
  * @source: http://github.com/kogmbh/ViewerJS
  */
 
-/*global document, PDFJS, console, TextLayerBuilder*/
+/*global document, console, prompt*/
 
 function PDFViewerPlugin() {
     "use strict";
 
-    function loadScript( path, callback ) {
-        var script    = document.createElement('script');
-        script.async  = false;
-        script.src    = path;
-        script.type   = 'text/javascript';
-        script.onload = callback || script.onload;
-        document.getElementsByTagName('head')[0].appendChild(script);
-    }
-
+    // Since version 4, pdf.js is distributed as an es module only, so it is
+    // loaded with a dynamic import, that is allowed inside a classic script.
     function init( callback ) {
-
-        loadScript('./compatibility.js', function () {
-            loadScript('./pdf.min.js', callback);
-            loadScript('./ui_utils.js');
-            loadScript('./text_layer_builder.js');
+        import('./pdf.min.mjs').then(function ( lib ) {
+            pdfjsLib = lib;
+            pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.min.mjs";
+            callback();
+        }).catch(function ( reason ) {
+            console.error("Unable to load pdf.js: " + reason);
         });
-
-        //var pluginCSS;
-        //pluginCSS = /**@type{!HTMLStyleElement}*/(document.createElementNS(document.head.namespaceURI, 'style'));
-        //pluginCSS.setAttribute('media', 'screen, print, handheld, projection');
-        //pluginCSS.setAttribute('type', 'text/css');
-        //pluginCSS.appendChild(document.createTextNode(PDFViewerPlugin_css));
-        //document.head.appendChild(pluginCSS);
-
     }
 
     var self                    = this,
+        pdfjsLib                = null,
         pages                   = [],
         domPages                = [],
         pageText                = [],
@@ -64,12 +51,9 @@ function PDFViewerPlugin() {
             FINISHED:        2,
             RUNNINGOUTDATED: 3
         },
-        TEXT_LAYER_RENDER_DELAY = 200, // ms
         container               = null,
         pdfDocument             = null,
-        pageViewScroll          = null,
         isGuessedSlideshow      = true, // assume true as default, any non-matching page will unset this
-        isPresentationMode      = false,
         scale                   = 1,
         currentPage             = 1,
         maxPageWidth            = 0,
@@ -91,46 +75,50 @@ function PDFViewerPlugin() {
             elemBottom    = elemTop + elem.clientHeight;
 
         // Is in view if either the top or the bottom of the page is between the
-        // document viewport bounds,
-        // or if the top is above the viewport and the bottom is below it.
+        // document viewport bounds, or if the top is above the viewport and the
+        // bottom is below it.
         return (elemTop >= docViewTop && elemTop < docViewBottom)
             || (elemBottom >= docViewTop && elemBottom < docViewBottom)
             || (elemTop < docViewTop && elemBottom >= docViewBottom);
     }
 
+    // Since version 4, pdf.js exposes the page number, not the page index.
+    function getPageIndex( page ) {
+        return page.pageNumber - 1;
+    }
+
+    function getViewport( page ) {
+        return page.getViewport({ scale: scale });
+    }
+
     function getDomPage( page ) {
-        return domPages[page.pageIndex];
+        return domPages[getPageIndex(page)];
     }
 
     function getPageText( page ) {
-        return pageText[page.pageIndex];
+        return pageText[getPageIndex(page)];
     }
 
     function getRenderingStatus( page ) {
-        return renderingStates[page.pageIndex];
+        return renderingStates[getPageIndex(page)];
     }
 
     function setRenderingStatus( page, renderStatus ) {
-        renderingStates[page.pageIndex] = renderStatus;
+        renderingStates[getPageIndex(page)] = renderStatus;
     }
 
     function updatePageDimensions( page, width, height ) {
-        var domPage   = getDomPage(page),
-            canvas    = domPage.getElementsByTagName('canvas')[0],
-            textLayer = domPage.getElementsByTagName('div')[0],
-            cssScale  = 'scale(' + scale + ', ' + scale + ')';
+        var domPage = getDomPage(page),
+            canvas  = domPage.getElementsByTagName('canvas')[0];
 
         domPage.style.width  = width + "px";
         domPage.style.height = height + "px";
 
+        // The text layer is sized by pdf.js itself through this css variable.
+        domPage.style.setProperty('--scale-factor', scale);
+
         canvas.width  = width;
         canvas.height = height;
-
-        textLayer.style.width  = width + "px";
-        textLayer.style.height = height + "px";
-
-        // CustomStyle.setProp('transform', textLayer, cssScale);
-        // CustomStyle.setProp('transformOrigin', textLayer, '0% 0%');
 
         if ( getRenderingStatus(page) === RENDERING.RUNNING ) {
             // TODO: should be able to cancel that rendering
@@ -142,19 +130,17 @@ function PDFViewerPlugin() {
     }
 
     function ensurePageRendered( page ) {
-        var domPage, textLayer, canvas;
+        var domPage, canvas;
 
         if ( getRenderingStatus(page) === RENDERING.BLANK ) {
             setRenderingStatus(page, RENDERING.RUNNING);
 
-            domPage   = getDomPage(page);
-            textLayer = getPageText(page);
-            canvas    = domPage.getElementsByTagName('canvas')[0];
+            domPage = getDomPage(page);
+            canvas  = domPage.getElementsByTagName('canvas')[0];
 
             page.render({
                 canvasContext: canvas.getContext('2d'),
-                textLayer:     textLayer,
-                viewport:      page.getViewport(scale)
+                viewport:      getViewport(page)
             }).promise.then(function () {
                 if ( getRenderingStatus(page) === RENDERING.RUNNINGOUTDATED ) {
                     // restart
@@ -163,6 +149,9 @@ function PDFViewerPlugin() {
                 } else {
                     setRenderingStatus(page, RENDERING.FINISHED);
                 }
+            }).catch(function ( reason ) {
+                setRenderingStatus(page, RENDERING.BLANK);
+                console.error("Unable to render the page " + page.pageNumber + ": " + reason);
             });
         }
     }
@@ -181,16 +170,17 @@ function PDFViewerPlugin() {
     }
 
     function createPage( page ) {
-        var pageNumber,
+        var pageIndex = getPageIndex(page),
+            pageNumber,
             textLayerDiv,
             textLayer,
             canvas,
             domPage,
             viewport;
 
-        pageNumber = page.pageIndex + 1;
+        pageNumber = pageIndex + 1;
 
-        viewport = page.getViewport(scale);
+        viewport = getViewport(page);
 
         domPage               = document.createElement('div');
         domPage.id            = 'pageContainer' + pageNumber;
@@ -207,9 +197,9 @@ function PDFViewerPlugin() {
         domPage.appendChild(canvas);
         domPage.appendChild(textLayerDiv);
 
-        pages[page.pageIndex]           = page;
-        domPages[page.pageIndex]        = domPage;
-        renderingStates[page.pageIndex] = RENDERING.BLANK;
+        pages[pageIndex]           = page;
+        domPages[pageIndex]        = domPage;
+        renderingStates[pageIndex] = RENDERING.BLANK;
 
         updatePageDimensions(page, viewport.width, viewport.height);
         if ( maxPageWidth < viewport.width ) {
@@ -218,22 +208,19 @@ function PDFViewerPlugin() {
         if ( maxPageHeight < viewport.height ) {
             maxPageHeight = viewport.height;
         }
-        // A very simple but generally true guess - if any page has the height greater than the width, treat it no
-        // longer as a slideshow
+        // A very simple but generally true guess - if any page has the height
+        // greater than the width, treat it no longer as a slideshow
         if ( viewport.width < viewport.height ) {
             isGuessedSlideshow = false;
         }
 
-        textLayer = new TextLayerBuilder({
-            textLayerDiv: textLayerDiv,
-            viewport:     viewport,
-            pageIndex:    pageNumber - 1
+        textLayer = new pdfjsLib.TextLayer({
+            textContentSource: page.streamTextContent(),
+            container:         textLayerDiv,
+            viewport:          viewport
         });
-        page.getTextContent().then(function ( textContent ) {
-            textLayer.setTextContent(textContent);
-            textLayer.render(TEXT_LAYER_RENDER_DELAY);
-        });
-        pageText[page.pageIndex] = textLayer;
+        textLayer.render();
+        pageText[pageIndex] = textLayer;
 
         createdPageCount += 1;
         if ( createdPageCount === (pdfDocument.numPages) ) {
@@ -243,12 +230,12 @@ function PDFViewerPlugin() {
 
     function passwordCallback( providePassword, reasonCode ) {
         switch ( reasonCode ) {
-            case PDFJS.PasswordResponses.NEED_PASSWORD:
+            case pdfjsLib.PasswordResponses.NEED_PASSWORD:
                 // PDF is password protected, ask the user to provide a password
                 promptForPassword(false, providePassword);
 
                 break;
-            case PDFJS.PasswordResponses.INCORRECT_PASSWORD:
+            case pdfjsLib.PasswordResponses.INCORRECT_PASSWORD:
                 // Wrong password was provided, ask the user again
                 promptForPassword(true, providePassword);
                 break;
@@ -265,22 +252,27 @@ function PDFViewerPlugin() {
 
     this.initialize = function ( viewContainer, location ) {
         var self = this,
-            i,
-            pluginCSS;
+            i;
 
         document.getElementsByTagName("body")[0].className = 'pdf';
 
         init(function () {
-            PDFJS.workerSrc = "./pdf.worker.min.js";
-            // Mitigate CVE-2024-4367 (arbitrary js via a crafted font matrix).
-            PDFJS.isEvalSupported = false;
-            PDFJS.getDocument(location, null, passwordCallback).then(function loadPDF( doc ) {
+            var loadingTask = pdfjsLib.getDocument({
+                url: location,
+                // Mitigate CVE-2024-4367 (arbitrary js via a crafted font
+                // matrix).
+                isEvalSupported: false
+            });
+            loadingTask.onPassword = passwordCallback;
+            loadingTask.promise.then(function loadPDF( doc ) {
                 pdfDocument = doc;
                 container   = viewContainer;
 
                 for ( i = 0; i < pdfDocument.numPages; i += 1 ) {
                     pdfDocument.getPage(i + 1).then(createPage);
                 }
+            }).catch(function ( reason ) {
+                console.error("Unable to load the pdf: " + reason);
             });
         });
     };
@@ -340,8 +332,9 @@ function PDFViewerPlugin() {
             scale = zoomLevel;
 
             for ( i = 0; i < pages.length; i += 1 ) {
-                viewport = pages[i].getViewport(scale);
+                viewport = getViewport(pages[i]);
                 updatePageDimensions(pages[i], viewport.width, viewport.height);
+                pageText[i].update({ viewport: viewport });
             }
         }
     };
@@ -390,11 +383,7 @@ function PDFViewerPlugin() {
     };
 
     this.getPluginVersion = function () {
-        var version = (String(typeof pdfjs_version) !== "undefined"
-                ? pdfjs_version
-                : "From Source"
-        );
-        return version;
+        return pdfjsLib ? pdfjsLib.version : "From Source";
     };
 
     this.getPluginURL = function () {
