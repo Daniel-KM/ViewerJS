@@ -2,6 +2,8 @@ function ImageViewerPlugin() {
     "use strict";
 
     var imgElement = undefined,
+        container = undefined,
+        notified = false,
         self = this,
         rotation = 0,
         currentPage = 1;
@@ -68,22 +70,37 @@ function ImageViewerPlugin() {
         document.getElementById("image").className  = 'rotate' + rotation;
     }
 
+    // The viewer is told once the image is there and not before: it scales
+    // it then, and an image that has not been read yet has no size to scale.
+    function notifyLoaded() {
+        if (!notified) {
+            notified = true;
+            self.onLoad();
+        }
+    }
+
     this.initialize = function (viewerElement, documentUrl) {
         // If the URL has a fragment (#...), try to load the file it represents
         imgElement=document.createElement("img");
-        imgElement.setAttribute('src', documentUrl);
         imgElement.setAttribute('alt', 'na');
         imgElement.setAttribute('id', 'image');
+        imgElement.onload = notifyLoaded;
+        imgElement.onerror = notifyLoaded;
+        imgElement.setAttribute('src', documentUrl);
 
         document.getElementsByTagName("body")[0].className = 'image';
 
+        container = viewerElement;
         viewerElement.appendChild(imgElement);
         viewerElement.style.overflow = "auto";
 
-        self.onLoad();
-
         initCSS();
         initButtons();
+
+        // An image of the cache is there already, and fires no event.
+        if (imgElement.complete) {
+            notifyLoaded();
+        }
     };
 
     this.isSlideshow = function () {
@@ -100,11 +117,35 @@ function ImageViewerPlugin() {
         imgElement.height = height;
     };
 
+    /**
+     * Holds the image inside the page, in its width and in its height: the
+     * side that is the most in the way settles the scale, so that the whole
+     * of the image is seen at once. An image smaller than the page is left
+     * at its own size rather than blown up, as the viewer of pdf does.
+     */
     this.fitToPage = function (width, height) {
-        imgElement.width = width;
+        var scale;
+        if (!imgElement.naturalWidth || !imgElement.naturalHeight) {
+            imgElement.width = width;
+            return;
+        }
+        scale = Math.min(width / imgElement.naturalWidth,
+                         height / imgElement.naturalHeight,
+                         1);
+        imgElement.width = imgElement.naturalWidth * scale;
     };
 
+    /**
+     * An image is one page: the whole of it is shown at once, where a
+     * document of many pages fits its width alone. The height is the one of
+     * the element the image sits in, which the viewer does not pass.
+     */
     this.fitSmart = function (width) {
+        var height = container && container.clientHeight;
+        if (height) {
+            self.fitToPage(width, height);
+            return;
+        }
         imgElement.width = width;
     };
 
