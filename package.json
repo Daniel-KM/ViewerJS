@@ -46,7 +46,7 @@
   "dependencies": {
     "node-webodf": "https://github.com/vandernorth/WebODF.git",
     "pdfjs-dist": "^3.6.172",
-    "video.js": "^8.0.4"
+    "video.js": "^8.23.9"
   },
   "devDependencies": {
     "browserify": "^13",

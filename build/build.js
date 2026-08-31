@@ -21,7 +21,7 @@ shell.cp(path.resolve(sourcePdf, './web/compatibility.js'), releaseDir);
 shell.rm('-rf', releaseDir + '/video-js');
 shell.cp('-R', path.resolve(sourceVideo, './dist/'), releaseDir + '/video-js');
 shell.rm('-rf', releaseDir + '/video-js/examples');
-shell.rm('-rf', releaseDir + '/video-js/ie8');
+shell.rm('-rf', releaseDir + '/video-js/types');
 shell.rm('-rf', releaseDir + '/video-js/*.zip');
 shell.cp(path.resolve(sourceDir, 'ODFViewerPlugin.js'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'PDFViewerPlugin.js'), releaseDir);
