@@ -2,7 +2,7 @@
   "name": "node-viewerjs",
   "author": "KO GmbH <http://www.kogmbh.com/> & alii",
   "description": "Document viewer component for PDF, AI and ODF documents — text, spreadsheet, presentation, drawing and formula — and audio, video and image files. Done with just HTML5, CSS3, and JavaScript. Powered by pdf.js and WebODF.",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "license": "AGPL-3.0",
   "contributors": [
     {
