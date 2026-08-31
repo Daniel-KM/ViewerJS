@@ -1,7 +1,7 @@
 {
     "type": "component",
     "name": "giftnuss/viewerjs",
-    "description": "Document viewer component for PDF and ODF documents and audio/video/images files. Done with just HTML5, CSS3, and JavaScript. Powered by pdf.js and WebODF.",
+    "description": "Document viewer component for PDF, AI and ODF documents and audio/video/images files. Done with just HTML5, CSS3, and JavaScript. Powered by pdf.js and WebODF.",
     "license": "AGPL-3.0",
     "authors": [
         {
@@ -21,6 +21,7 @@
         "OpenDocument",
         "ODF",
         "PDF",
+        "AI",
         "Text",
         "Document",
         "Slides",
@@ -177,6 +178,11 @@
                 "release/viewer.js",
                 "release/webodf.js"
             ]
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "robloach/component-installer": true
         }
     }
 }
