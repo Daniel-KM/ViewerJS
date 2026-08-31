@@ -688,7 +688,11 @@ function Viewer( viewerPlugin, parameters ) {
                     'application/vnd.oasis.opendocument.presentation-template',
                     'application/vnd.oasis.opendocument.spreadsheet',
                     'application/vnd.oasis.opendocument.spreadsheet-flat-xml',
-                    'application/vnd.oasis.opendocument.spreadsheet-template'];
+                    'application/vnd.oasis.opendocument.spreadsheet-template',
+                    'application/vnd.oasis.opendocument.graphics',
+                    'application/vnd.oasis.opendocument.graphics-flat-xml',
+                    'application/vnd.oasis.opendocument.graphics-template',
+                    'application/vnd.oasis.opendocument.formula'];
                 var odfFileExtensions = [
                     'odt',
                     'fodt',
@@ -698,7 +702,11 @@ function Viewer( viewerPlugin, parameters ) {
                     'otp',
                     'ods',
                     'fods',
-                    'ots'];
+                    'ots',
+                    'odg',
+                    'fodg',
+                    'otg',
+                    'odf'];
 
                 return {
                     supportsMimetype:      function ( mimetype ) {
