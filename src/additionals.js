@@ -1,5 +1,10 @@
-var pdfjs_version    = '1.8.355',
-    ViewerJS_version = '0.6.6';
+// The versions are filled by the build from "package.json" and from the
+// packages that are installed, so they are never stale. They stay empty when
+// the sources are used directly, without a build.
+var ViewerJS_version = '',
+    pdfjs_version    = '',
+    videojs_version  = '',
+    webodf_version   = '';
 
 function loadPlugin( pluginFile, callback ) {
     "use strict";

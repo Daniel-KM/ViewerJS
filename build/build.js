@@ -8,7 +8,11 @@ const shell      = require('shelljs'),
       sourceDir  = './src',
       sourcePdf  = './node_modules/pdfjs-dist',
       sourceVideo  = './node_modules/video.js',
-      sourceOdf  = './node_modules/node-webodf',
+      // The library of OpenDocument is looked for in the package when it is
+      // installed, then in the directory where it can be dropped by hand, see
+      // "README.md". When neither holds it, the one of the release is kept.
+      sourcesOdf = ['./node_modules/node-webodf/dist/webodf.js',
+          './vendor/webodf/webodf.js'],
       file       = filename => {
           return path.resolve(sourceDir, filename)
       };
@@ -22,7 +26,13 @@ shell.cp(path.resolve(sourcePdf, './build/pdf.worker.min.mjs'), releaseDir);
 // The library that draws the documents of OpenDocument is taken from its
 // package, as the ones of pdf and of video are: it is built when the package
 // is installed, see its "prepare".
-shell.cp(path.resolve(sourceOdf, './dist/webodf.js'), releaseDir);
+const sourceOdf = sourcesOdf.map(p => path.resolve(p)).find(fs.existsSync);
+if (sourceOdf) {
+    shell.cp(sourceOdf, releaseDir);
+} else {
+    console.info('WebODF was not found: the library of the release is kept.'
+        + ' See "README.md" to install or to drop it.');
+}
 shell.rm('-rf', releaseDir + '/video-js');
 shell.cp('-R', path.resolve(sourceVideo, './dist/'), releaseDir + '/video-js');
 shell.rm('-rf', releaseDir + '/video-js/examples');
@@ -41,10 +51,34 @@ shell.cp(path.resolve(sourceDir, 'ImageViewerPlugin.js'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'MultimediaViewerPlugin.js'), releaseDir);
 shell.cp(path.resolve(sourceDir, 'UnknownFilePlugin.js'), releaseDir);
 
+// The versions of the viewer and of the libraries it embeds, read from the
+// packages that are installed, so the built viewer never states a stale one.
+const version = packagePath => {
+    return JSON.parse(fs.readFileSync(path.resolve(packagePath, 'package.json'))).version;
+};
+
+// WebODF states its own version inside the library, whatever it was taken
+// from: a package, a hand made copy or the release itself.
+const versionOdf = () => {
+    const library = path.resolve(releaseDir, 'webodf.js');
+    const found = fs.existsSync(library)
+        && /webodf_version *= *"v?([^"]*)"/.exec(fs.readFileSync(library, 'utf8'));
+    return found ? found[1] : '';
+};
+
+const versions = {
+    ViewerJS_version: version('.'),
+    pdfjs_version: version(sourcePdf),
+    videojs_version: version(sourceVideo),
+    webodf_version: versionOdf(),
+};
+
 shell
     .cat([file('additionals.js'),
         file('viewer.js'),
         file('PluginLoader.js')])
+    .sed(/^( *(?:var )?)(ViewerJS_version|pdfjs_version|videojs_version|webodf_version)( *= *)''/gm,
+        (match, indent, name, equal) => indent + name + equal + "'" + versions[name] + "'")
     .to(path.resolve(releaseDir, 'viewer.js'));
 
 shell
