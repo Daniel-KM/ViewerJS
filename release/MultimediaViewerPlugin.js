@@ -39,8 +39,15 @@ function MultimediaViewerPlugin() {
         videojs(
             videoElement,
             {
-                controls:  'enabled',
-                techOrder: ['html5']
+                controls:   'enabled',
+                techOrder:  ['html5'],
+                // Only 5, 10 and 30 are supported by video.js.
+                controlBar: {
+                    skipButtons: {
+                        backward: 10,
+                        forward:  10
+                    }
+                }
             },
             function() {
                 // This is functionally the same as the previous example.
