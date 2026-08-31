@@ -268,7 +268,10 @@ function Viewer( viewerPlugin, parameters ) {
      * @return {undefined}
      */
     this.showPage = function ( n ) {
-        if ( n <= 0 ) {
+        // The page number may be a string from a field, so it should be parsed.
+        n = parseInt(n, 10);
+
+        if ( isNaN(n) || n <= 0 ) {
             n = 1;
         } else if ( n > pages.length ) {
             n = pages.length;
@@ -575,7 +578,13 @@ function Viewer( viewerPlugin, parameters ) {
 
             window.addEventListener('keydown', function ( evt ) {
                 var key      = evt.keyCode,
-                    shiftKey = evt.shiftKey;
+                    shiftKey = evt.shiftKey,
+                    target   = evt.target || evt.srcElement,
+                    tagName  = target && target.tagName ? target.tagName.toUpperCase() : '';
+
+                if ( tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' ) {
+                    return;
+                }
 
                 // blanked-out mode?
                 if ( isBlankedOut() ) {
