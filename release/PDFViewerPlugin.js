@@ -272,6 +272,8 @@ function PDFViewerPlugin() {
 
         init(function () {
             PDFJS.workerSrc = "./pdf.worker.min.js";
+            // Mitigate CVE-2024-4367 (arbitrary js via a crafted font matrix).
+            PDFJS.isEvalSupported = false;
             PDFJS.getDocument(location, null, passwordCallback).then(function loadPDF( doc ) {
                 pdfDocument = doc;
                 container   = viewContainer;
