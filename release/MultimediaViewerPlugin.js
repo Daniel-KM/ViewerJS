@@ -8,6 +8,7 @@ function MultimediaViewerPlugin() {
 
     var videoElement = undefined,
         videoSource = undefined,
+        player = undefined,
         self = this;
 
     this.initialize = function (viewerElement, documentUrl) {
@@ -36,7 +37,7 @@ function MultimediaViewerPlugin() {
         viewerElement.style.overflow = "auto";
 
         // init viewerjs
-        videojs(
+        player = videojs(
             videoElement,
             {
                 controls:   'enabled',
@@ -53,6 +54,17 @@ function MultimediaViewerPlugin() {
                 // This is functionally the same as the previous example.
             }
         );
+
+        // The player fills the page, and a video smaller than the page would
+        // be blown up: it is held at its own size, the page keeping the
+        // whole of it in sight either way. A sound has no size of its own.
+        player.on('loadedmetadata', function () {
+            var box = player.el();
+            if (player.videoWidth() && player.videoHeight()) {
+                box.style.maxWidth = player.videoWidth() + 'px';
+                box.style.maxHeight = player.videoHeight() + 'px';
+            }
+        });
 
         self.onLoad();
     };
