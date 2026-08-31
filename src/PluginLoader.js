@@ -102,17 +102,25 @@
             },
             (function () {
                 var imageMimetypes      = [
+                    'image/apng',
+                    'image/avif',
+                    'image/bmp',
+                    'image/gif',
                     'image/jpeg',
                     'image/pjpeg',
-                    'image/gif',
                     'image/png',
-                    'image/bmp'];
+                    'image/svg+xml',
+                    'image/webp'];
                 var imageFileExtensions = [
-                    'png',
+                    'apng',
+                    'avif',
+                    'bmp',
+                    'gif',
                     'jpg',
                     'jpeg',
-                    'gif',
-                    'bmp'];
+                    'png',
+                    'svg',
+                    'webp'];
 
                 return {
                     supportsMimetype:      function ( mimetype ) {
