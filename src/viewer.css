@@ -678,6 +678,20 @@ html[dir='rtl'] .dropdownToolbarButton {
     overflow:           hidden;
 }
 
+/*
+ * A text drawn over pages holds each page in a box of its own, laid outside
+ * the flow of the canvas: the canvas must not clip them, and the shadow is
+ * of each page rather than of the whole.
+ */
+#canvas.paginated {
+    overflow:           visible;
+    box-shadow:         none;
+}
+
+#canvas.paginated .webodf-pageSheet {
+    box-shadow:         0px 0px 7px rgba(0, 0, 0, 0.75);
+}
+
 #sliderContainer {
     visibility: hidden;
 }

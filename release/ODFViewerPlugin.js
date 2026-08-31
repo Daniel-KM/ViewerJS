@@ -96,6 +96,10 @@ function ODFViewerPlugin() {
 
             odfElement = document.getElementById('canvas');
             odfCanvas  = new odf.OdfCanvas(odfElement);
+            // A text is drawn over pages, as it is printed, which the library
+            // does not do on its own: it is asked for before the document is
+            // read, so that it is drawn but once.
+            odfCanvas.setPaginated(true);
             odfCanvas.load(documentUrl);
 
             odfCanvas.addListener('statereadychange', function () {
@@ -103,6 +107,10 @@ function ODFViewerPlugin() {
                 initialized  = true;
                 documentType = odfCanvas.odfContainer().getDocumentType(root);
                 if ( documentType === 'text' ) {
+                    // The pages stand outside the flow of the canvas, which
+                    // clips what overflows it: the class tells the style
+                    // sheet to let them be seen, see "viewer.css".
+                    odfElement.className += ' paginated';
                     odfCanvas.enableAnnotations(true, false);
 
                     session              = new ops.Session(odfCanvas);
