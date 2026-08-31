@@ -305,16 +305,38 @@ function Viewer( viewerPlugin, parameters ) {
     };
 
     /**
-     * Attempts to 'download' the file.
+     * Downloads the file, rather than opening it.
+     *
+     * The attribute "download" of a link is what a browser takes for an
+     * order to write the file rather than to show it, and it names the file
+     * as the url does. It holds for a file of the same origin; for one of
+     * another origin the browser pays no heed to it, so the parameter that
+     * asks the server for an attachment is kept beside it.
      * @return {undefined}
      */
     this.download = function () {
-        var documentUrl = url.split('#')[0];
+        var documentUrl = url.split('#')[0],
+            link = document.createElement('a'),
+            name = decodeURIComponent(
+                documentUrl.split('?')[0].split('/').pop()
+            );
+
         if ( documentUrl.indexOf('?') !== -1 ) {
             documentUrl += '&contentDispositionType=attachment';
         } else {
             documentUrl += '?contentDispositionType=attachment';
         }
+
+        if ( 'download' in link ) {
+            link.href = documentUrl;
+            link.download = name || '';
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            return;
+        }
+
         window.open(documentUrl, '_parent');
     };
 
