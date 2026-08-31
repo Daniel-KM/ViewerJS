@@ -8,6 +8,7 @@ const shell      = require('shelljs'),
       sourceDir  = './src',
       sourcePdf  = './node_modules/pdfjs-dist',
       sourceVideo  = './node_modules/video.js',
+      sourceOdf  = './node_modules/node-webodf',
       file       = filename => {
           return path.resolve(sourceDir, filename)
       };
@@ -18,6 +19,10 @@ shell.cp(path.resolve(sourceDir, 'example.local.css'), releaseDir);
 // "compatibility.js" does not exist any more.
 shell.cp(path.resolve(sourcePdf, './build/pdf.min.mjs'), releaseDir);
 shell.cp(path.resolve(sourcePdf, './build/pdf.worker.min.mjs'), releaseDir);
+// The library that draws the documents of OpenDocument is taken from its
+// package, as the ones of pdf and of video are: it is built when the package
+// is installed, see its "prepare".
+shell.cp(path.resolve(sourceOdf, './dist/webodf.js'), releaseDir);
 shell.rm('-rf', releaseDir + '/video-js');
 shell.cp('-R', path.resolve(sourceVideo, './dist/'), releaseDir + '/video-js');
 shell.rm('-rf', releaseDir + '/video-js/examples');
