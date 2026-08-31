@@ -1,0 +1,88 @@
+# Builds the viewer and publishes it with the release of gitlab. Github builds
+# and publishes its own, see ".github/workflows/release.yml": neither forge
+# pushes a file to the other.
+#
+# The product is one archive of the directory "release", which is the viewer
+# itself: the module of Omeka S reads it from the release, see "README.md".
+
+stages:
+  - build
+  - release
+
+variables:
+  PACKAGE: ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/viewerjs
+
+build:
+  stage: build
+  image: node:22
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+  before_script:
+    - apt-get update && apt-get install --no-install-recommends -y zip
+    - npm ci
+  script:
+    - npm run build
+    - version=$(node -p "require('./package.json').version")
+    - mkdir -p products
+    - (cd release && zip -rq ../products/viewerjs-$version.zip .)
+    - ls -l products
+  artifacts:
+    paths:
+      - products
+    expire_in: 1 week
+
+release:
+  stage: release
+  # The image is the one of the build, for the client of http it holds: the
+  # image of "release-cli" holds none, and its "update" takes no link, so the
+  # api of the releases is called instead.
+  image: node:22
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+  needs:
+    - job: build
+      artifacts: true
+  before_script:
+    - apt-get update
+    - apt-get install --no-install-recommends -y curl ca-certificates
+  script:
+    # The archive goes to the generic package registry of the project, whose
+    # token is the one of the job: no token of a person is needed. The release
+    # then links to it by a stable path, which is the url the module of
+    # Omeka S holds.
+    - |
+      set -eu
+      name=viewerjs-$CI_COMMIT_TAG.zip
+      url=$PACKAGE/$CI_COMMIT_TAG/$name
+      curl --fail --silent --show-error --upload-file "products/$name" \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" "$url"
+    # A release that stands already is given the link it has not got yet,
+    # rather than opened again, so that the pipeline can be run a second time
+    # on the same tag. A link that is there answers 400, which is not a
+    # failure here.
+    - |
+      set -eu
+      api=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases
+      auth="JOB-TOKEN: $CI_JOB_TOKEN"
+      json='Content-Type: application/json'
+      link="{\"name\":\"$name\",\"url\":\"$url\",
+          \"link_type\":\"package\",\"direct_asset_path\":\"/$name\"}"
+      code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+          --header "$auth" "$api/$CI_COMMIT_TAG")
+      if [ "$code" = "404" ]; then
+          curl --fail --silent --show-error --request POST \
+              --header "$auth" --header "$json" \
+              --data "{\"tag_name\":\"$CI_COMMIT_TAG\",
+                  \"name\":\"$CI_COMMIT_TAG\",
+                  \"description\":\"The viewer of $CI_COMMIT_TAG.\",
+                  \"assets\":{\"links\":[$link]}}" \
+              "$api"
+      else
+          code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --request POST --header "$auth" --header "$json" \
+              --data "$link" "$api/$CI_COMMIT_TAG/assets/links")
+          case $code in
+              2*|400) ;;
+              *) echo "the link of $name was refused ($code)"; exit 1 ;;
+          esac
+      fi
