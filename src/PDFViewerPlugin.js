@@ -261,7 +261,15 @@ function PDFViewerPlugin() {
                 url: location,
                 // Mitigate CVE-2024-4367 (arbitrary js via a crafted font
                 // matrix).
-                isEvalSupported: false
+                isEvalSupported: false,
+                // Required to decode the images jpeg 2000 and jbig2, to manage
+                // colors, to read some encodings of text and to draw the
+                // standard fonts.
+                wasmUrl: './wasm/',
+                iccUrl: './iccs/',
+                cMapUrl: './cmaps/',
+                cMapPacked: true,
+                standardFontDataUrl: './standard_fonts/'
             });
             loadingTask.onPassword = passwordCallback;
             loadingTask.promise.then(function loadPDF( doc ) {

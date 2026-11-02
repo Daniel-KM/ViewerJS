@@ -23,6 +23,13 @@ shell.cp(path.resolve(sourceDir, 'example.local.css'), releaseDir);
 // "compatibility.js" does not exist any more.
 shell.cp(path.resolve(sourcePdf, './build/pdf.min.mjs'), releaseDir);
 shell.cp(path.resolve(sourcePdf, './build/pdf.worker.min.mjs'), releaseDir);
+// The data used by pdf.js to decode images (wasm), to manage colors (iccs), to
+// read some encodings of text (cmaps) and to draw the fonts that are not
+// embedded (standard_fonts).
+['wasm', 'iccs', 'cmaps', 'standard_fonts'].forEach(name => {
+    shell.rm('-rf', releaseDir + '/' + name);
+    shell.cp('-R', path.resolve(sourcePdf, name), releaseDir + '/' + name);
+});
 // The library that draws the documents of OpenDocument is taken from its
 // package, as the ones of pdf and of video are: it is built when the package
 // is installed, see its "prepare".
